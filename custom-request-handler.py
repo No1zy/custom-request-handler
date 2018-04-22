@@ -72,18 +72,31 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
 
         self._add_btn = JButton("Add")
         self._add_btn.addActionListener(self)
+        
         self._remove_btn = JButton("Remove")
         self._remove_btn.addActionListener(self)
         self._jLabel_param = JLabel("Name:")
+        self._param_error = JLabel("Name is required")
+
+        self._param_error.setVisible(False)
+        self._param_error.setFont(Font(Font.MONOSPACED, Font.ITALIC, 12))
+        self._param_error.setForeground(Color.red)
         self._jTextIn_param = JTextField(20)
         self._jLabel_regex = JLabel("Regex:")
-        self._jTextIn_regex = JTextField(15)
-        self._param_panel = JPanel()
+        self._jTextIn_regex = JTextField(20)
+        self._regex_error = JLabel("No group defined")
+        self._regex_error.setVisible(False)
+        self._regex_error.setFont(Font(Font.MONOSPACED, Font.ITALIC, 12))
+        self._regex_error.setForeground(Color.red)
+        self._param_panel = JPanel(FlowLayout(FlowLayout.LEADING))
         self._param_panel.add(self._jLabel_param)
         self._param_panel.add(self._jTextIn_param)
-        self._regex_panel = JPanel()
+        self._param_panel.add(self._param_error)
+
+        self._regex_panel = JPanel(FlowLayout(FlowLayout.LEADING))
         self._regex_panel.add(self._jLabel_regex)
         self._regex_panel.add(self._jTextIn_regex)
+        self._regex_panel.add(self._regex_error)
         self._button_panel = JPanel()
         self._button_panel.add(self._add_btn)
         self._button_panel.add(self._remove_btn)
@@ -182,7 +195,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         return
 
     def getTabCaption(self):
-        return "JSON replacer"
+        return "custom-request-handler"
 
     def getUiComponent(self):
         return self._split_main
@@ -190,7 +203,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
     def createMenuItems(self, invocation):
         menu = []
         ctx = invocation.getInvocationContext()
-        menu.append(swing.JMenuItem("Send to JSON replacer", None, actionPerformed=lambda x, inv=invocation: self.eventListener(inv)))
+        menu.append(swing.JMenuItem("Send to custom-request-handler", None, actionPerformed=lambda x, inv=invocation: self.eventListener(inv)))
         return menu if menu else None
 
     def eventListener(self, invocation):
@@ -205,19 +218,26 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         except:
              print 'Failed to add data to JSON replacer tab.'
 
-
     #
     # Implement Action
     #
     def actionPerformed(self, actionEvent):
         if actionEvent.getSource() is self._add_btn:
             param = self._jTextIn_param.getText()
+            if len(param) is 0:
+                self._param_error.setVisible(True)
+                return
+
             regex = self._jTextIn_regex.getText()
             req = self._req_panel.getText()
+            try:
+                pattern = re.compile(regex)
+                match = pattern.search(req)
+                value = match.group(1) if match else None
+            except IndexError:
+                self._regex_error.setVisible(True)
+                return 
 
-            pattern = re.compile(regex)
-            match = pattern.search(req)
-            value = match.group(1) if match else None
             data = [
                 param,
                 value,
@@ -316,7 +336,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
     #
 
     def getActionName(self):
-        return "JSON replacer"
+        return "custom-request-handler"
 
     # current_request []byte
     # macro_items     
