@@ -203,7 +203,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
     def createMenuItems(self, invocation):
         menu = []
         ctx = invocation.getInvocationContext()
-        menu.append(swing.JMenuItem("Send to custom-request-handler", None, actionPerformed=lambda x, inv=invocation: self.eventListener(inv)))
+        menu.append(swing.JMenuItem("Send to CHR", None, actionPerformed=lambda x, inv=invocation: self.eventListener(inv)))
         return menu if menu else None
 
     def eventListener(self, invocation):
@@ -336,7 +336,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
     #
 
     def getActionName(self):
-        return "custom-request-handler"
+        return "custom request handler"
 
     # current_request []byte
     # macro_items     
