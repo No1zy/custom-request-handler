@@ -195,7 +195,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         return
 
     def getTabCaption(self):
-        return "custom-request-handler"
+        return "CRH"
 
     def getUiComponent(self):
         return self._split_main
