@@ -242,9 +242,6 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             res_info = self.helpers.analyzeResponse(message)
             send_res = message.tostring()
             self._text_editor.setText(send_res)
-            #self._req_panel = JTextArea(send_res)
-            #self._req_panel.setLineWrap(True)
-            #self._jScrollPaneOut.setViewportView(self._req_panel)
         except:
              print 'Failed to add data to JSON replacer tab.'
 
