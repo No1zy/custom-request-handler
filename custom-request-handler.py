@@ -47,7 +47,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         self.helpers = callbacks.getHelpers()
         
         # set our extension name
-        callbacks.setExtensionName("Session token example")
+        callbacks.setExtensionName("Custom Request Handler")
         callbacks.registerSessionHandlingAction(self)
         callbacks.registerContextMenuFactory(self)
         self._text_editor = callbacks.createTextEditor()
