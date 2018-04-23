@@ -4,6 +4,7 @@ from burp import IRequestInfo
 from burp import ITab
 from burp import IContextMenuFactory
 from burp import IContextMenuInvocation
+from burp import ITextEditor
 from javax import swing
 from javax.swing import JSplitPane
 from javax.swing import JPanel
@@ -35,7 +36,7 @@ import sys
 import collections
 import re
 
-class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFactory, IContextMenuInvocation, ActionListener):
+class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFactory, IContextMenuInvocation, ActionListener, ITextEditor):
 
     #
     # implement IBurpExtender
@@ -47,9 +48,10 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         
         # set our extension name
         callbacks.setExtensionName("Session token example")
-        callbacks.createTextEditor()
         callbacks.registerSessionHandlingAction(self)
         callbacks.registerContextMenuFactory(self)
+        self._text_editor = callbacks.createTextEditor()
+        self._text_editor.setEditable(False)
 
         #The state was How far loaded the table 
         self.current_column_id = 0
@@ -186,7 +188,8 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         regex_column_names = [ 
             "Type",
             "Name",
-            "Regex",
+            "Start at offset",
+            "End at offset",
         ]
         #clear target.json
         with open("target.json", "w") as f:
@@ -198,7 +201,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         column_model = self.target_table.getColumnModel()
         for count in xrange(column_model.getColumnCount()):
             column = column_model.getColumn(count)
-            column.setPreferredWidth(170)
+            column.setPreferredWidth(100)
 
         self.target_table.preferredScrollableViewportSize = Dimension(500, 70)
         self.target_table.setFillsViewportHeight(True)
@@ -209,8 +212,8 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         box_top.add(table_panel)
 
         self._jScrollPaneOut = JScrollPane()
-        self._split_main.setBottomComponent(self._jScrollPaneOut)
-
+        #self._split_main.setBottomComponent(self._jScrollPaneOut)
+        self._split_main.setBottomComponent(self._text_editor.getComponent())
         self._split_main.setTopComponent(box_top)
         self._split_main.setDividerLocation(450)
         callbacks.customizeUiComponent(self._split_main)
@@ -238,9 +241,10 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             message = invMessage[0].getResponse()
             res_info = self.helpers.analyzeResponse(message)
             send_res = message.tostring()
-            self._req_panel = JTextArea(send_res)
-            self._req_panel.setLineWrap(True)
-            self._jScrollPaneOut.setViewportView(self._req_panel)
+            self._text_editor.setText(send_res)
+            #self._req_panel = JTextArea(send_res)
+            #self._req_panel.setLineWrap(True)
+            #self._jScrollPaneOut.setViewportView(self._req_panel)
         except:
              print 'Failed to add data to JSON replacer tab.'
 
@@ -257,22 +261,25 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                 self._param_error.setVisible(True)
                 return
             self._param_error.setVisible(False)
+            start, end = self._text_editor.getSelectionBounds()
 
-            regex = self._jTextIn_regex.getText()
-            req = self._req_panel.getText()
-            try:
+            #regex = self._jTextIn_regex.getText()
+            req = self._text_editor.getText()
+
+            '''try:
                 pattern = re.compile(regex)
                 match = pattern.search(req)
                 value = match.group(1) if match else None
             except IndexError:
                 self._regex_error.setVisible(True)
                 return 
-            self._regex_error.setVisible(False)
+            self._regex_error.setVisible(False)'''
 
             data = [
                 item,
                 param,
-                regex,
+                start,
+                end,
             ]
             self.target_table_model.addRow(data)
 
@@ -285,7 +292,8 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                 json_data.update({
                     param : [
                         item,
-                        regex,
+                        start,
+                        end,
                     ]
                 })
                 self.write_file(f, json.dumps(json_data))
@@ -295,8 +303,8 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             rowno = self.target_table.getSelectedRow()
             if rowno != -1:
                 column_model = self.target_table.getColumnModel()
-                param_name = self.target_table_model.getValueAt(rowno, 1).encode('utf-8')
-                regex = self.target_table_model.getValueAt(rowno, 2).encode('utf-8')
+                param_name = self.target_table_model.getValueAt(rowno, 1)
+                start = self.target_table_model.getValueAt(rowno, 2)
 
                 self.target_table_model.removeRow(rowno)
                 with open("target.json", 'r+') as f:
@@ -306,13 +314,13 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                         json_data = dict()
 
                     for key, value in json_data.items():
-                        if value[1].encode('utf-8') == regex and key.encode('utf-8') == param_name:
+                        if value[1] == start and key == param_name:
                             try:
                                 del json_data[key]
                             except:
                                 print('Error: {0}: No such json key.'.format(key))
                     self.write_file(f, json.dumps(json_data))
-        
+
         # onclick load button of payload sets
         if actionEvent.getSource() is self._file_load_btn:
             #clear table
@@ -424,22 +432,19 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             return
 
         req_data = json_data
-        body_string = final_response.tostring()
         column_model = self.file_table.getColumnModel()
         row_count = self.file_table_model.getRowCount()
         for key in target_keys:
-            if value[1] == 'Set payload':
+            if value[-1] == 'Set payload':
                 if row_count > self.current_column_id:
                     req_value = self.file_table_model.getValueAt(self.current_column_id, 2)
                     self.current_column_id += 1
             else:
-                match = re.search(value[1], body_string)
-                if match:
-                    req_value = match.group(1)
-
+                start, end = value[1:]
+                req_value = final_response[start:end].tostring()
             req_data[key] = req_value
-        req = current_request.getRequest()
 
+        req = current_request.getRequest()
         json_data_start = self.helpers.indexOf(req, bytearray(body), False, 0, len(req))
 
         # glue together header + customized json of request
@@ -463,14 +468,13 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         req = current_request.getRequest()
         
         for key in target_keys:
-            if value[1] == 'Set payload':
+            if value[-1] == 'Set payload':
                 if row_count > self.current_column_id:
                     req_value = self.file_table_model.getValueAt(self.current_column_id, 2)
                     self.current_column_id += 1
             else:
-                match = re.search(value[1], final_response.tostring())
-                if match:
-                    req_value = match.group(1)
+                start, end = value[1:]
+                req_value = final_response[start:end].tostring()
                     
             key_start = self.helpers.indexOf(req, bytearray(key.encode('utf-8')), False, 0, len(req))
             key_end = self.helpers.indexOf(req, bytearray('\r\n'), False, key_start, len(req))
@@ -480,7 +484,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         # glue together first line + customized hedaer + rest of request
         current_request.setRequest(
                 req[0:key_start] +
-                self.helpers.stringToBytes("%s: %s" % (key, req_value)) +
+                self.helpers.stringToBytes("%s: %s" % (key.encode('utf-8'), req_value)) +
                 req[key_end:])
 
     def remove_all(self, model):
