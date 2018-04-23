@@ -21,6 +21,7 @@ from javax.swing.border import LineBorder
 from javax.swing.border import TitledBorder
 from javax.swing import JFileChooser
 from javax.swing import JCheckBox
+from javax.swing import JComboBox
 from java.awt import FlowLayout
 from java.awt import Component
 from java.awt import Dimension
@@ -71,10 +72,19 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         box_regex.setBorder(border)
 
         self._add_btn = JButton("Add")
-        self._add_btn.addActionListener(self)
-        
+        self._add_btn.addActionListener(self)  
         self._remove_btn = JButton("Remove")
         self._remove_btn.addActionListener(self)
+        
+        items = [
+            'JSON',
+            'Header',
+        ]
+        self._dropdown = JComboBox(items)
+        type_panel = JPanel(FlowLayout(FlowLayout.LEADING))
+        type_panel.add(JLabel('Type:'))
+        type_panel.add(self._dropdown)
+
         self._jLabel_param = JLabel("Name:")
         self._param_error = JLabel("Name is required")
 
@@ -88,6 +98,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         self._regex_error.setVisible(False)
         self._regex_error.setFont(Font(Font.MONOSPACED, Font.ITALIC, 12))
         self._regex_error.setForeground(Color.red)
+        
         self._param_panel = JPanel(FlowLayout(FlowLayout.LEADING))
         self._param_panel.add(self._jLabel_param)
         self._param_panel.add(self._jTextIn_param)
@@ -97,12 +108,17 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         self._regex_panel.add(self._jLabel_regex)
         self._regex_panel.add(self._jTextIn_regex)
         self._regex_panel.add(self._regex_error)
-        self._button_panel = JPanel()
-        self._button_panel.add(self._add_btn)
-        self._button_panel.add(self._remove_btn)
+        button_panel = JPanel(FlowLayout(FlowLayout.LEADING))
+        #padding
+        button_panel.add(JPanel())
+        button_panel.add(JPanel())
+        button_panel.add(JPanel())
+        button_panel.add(self._add_btn)
+        button_panel.add(self._remove_btn)
+        box_regex.add(type_panel)
         box_regex.add(self._param_panel)
         box_regex.add(self._regex_panel)
-        buttonHorizontal.add(self._button_panel)
+        buttonHorizontal.add(button_panel)
         box_regex.add(buttonHorizontal)
         boxVertical.add(box_regex)
         box_top.add(boxVertical)
@@ -116,8 +132,9 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         box_param.add(checkbox_panel)
 
         file_column_names = [ 
+            "Type",
             "Name",
-            "Value",
+            "Payload",
         ]
         data = []
         self.file_table_model = DefaultTableModel(data, file_column_names)
@@ -127,10 +144,16 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         column_model = self.file_table.getColumnModel()
         for count in xrange(column_model.getColumnCount()):
             column = column_model.getColumn(count)
-            column.setPreferredWidth(250)
+            column.setPreferredWidth(160)
 
         self.file_table.preferredScrollableViewportSize = Dimension(500, 70)
         self.file_table.setFillsViewportHeight(True)
+
+        panel_dropdown = JPanel(FlowLayout(FlowLayout.LEADING))
+        self._file_dropdown = JComboBox(items)
+        panel_dropdown.add(JLabel('Type:'))
+        panel_dropdown.add(self._file_dropdown)
+        box_param.add(panel_dropdown)
         box_param.add(JScrollPane(self.file_table))
         callbacks.customizeUiComponent(self.file_table)
 
@@ -161,8 +184,8 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         boxVertical.add(box_file)
 
         regex_column_names = [ 
+            "Type",
             "Name",
-            "Value",
             "Regex",
         ]
         #clear target.json
@@ -189,7 +212,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         self._split_main.setBottomComponent(self._jScrollPaneOut)
 
         self._split_main.setTopComponent(box_top)
-        self._split_main.setDividerLocation(380)
+        self._split_main.setDividerLocation(450)
         callbacks.customizeUiComponent(self._split_main)
         callbacks.addSuiteTab(self)
         return
@@ -203,10 +226,13 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
     def createMenuItems(self, invocation):
         menu = []
         ctx = invocation.getInvocationContext()
-        menu.append(swing.JMenuItem("Send to CHR", None, actionPerformed=lambda x, inv=invocation: self.eventListener(inv)))
+        menu.append(swing.JMenuItem("Send to CHR", None, actionPerformed=lambda x, inv=invocation: self.menu_action(inv)))
         return menu if menu else None
 
-    def eventListener(self, invocation):
+    #
+    # Implement Menu Action
+    #
+    def menu_action(self, invocation):
         try:
             invMessage = invocation.getSelectedMessages()
             message = invMessage[0].getResponse()
@@ -222,11 +248,15 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
     # Implement Action
     #
     def actionPerformed(self, actionEvent):
+
+        # onclick add button of extract from regex group
         if actionEvent.getSource() is self._add_btn:
+            item = self._dropdown.getSelectedItem()
             param = self._jTextIn_param.getText()
             if len(param) is 0:
                 self._param_error.setVisible(True)
                 return
+            self._param_error.setVisible(False)
 
             regex = self._jTextIn_regex.getText()
             req = self._req_panel.getText()
@@ -237,55 +267,66 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             except IndexError:
                 self._regex_error.setVisible(True)
                 return 
+            self._regex_error.setVisible(False)
 
             data = [
+                item,
                 param,
-                value,
                 regex,
             ]
             self.target_table_model.addRow(data)
 
-            with open("target.json", "r") as f:
+            with open("target.json", "r+") as f:
                 try:
                     json_data = json.load(f)
                 except:
                     json_data = dict()
 
-            with open("target.json", "w") as f:
                 json_data.update({
-                    param : regex,
+                    param : [
+                        item,
+                        regex,
+                    ]
                 })
-                f.write(json.dumps(json_data))
+                self.write_file(f, json.dumps(json_data))
 
+        # onclick remove button of extract from regex group
         if actionEvent.getSource() is self._remove_btn:
             rowno = self.target_table.getSelectedRow()
             if rowno != -1:
                 column_model = self.target_table.getColumnModel()
-                param_name = self.target_table_model.getValueAt(rowno, 0).encode('utf-8')
+                param_name = self.target_table_model.getValueAt(rowno, 1).encode('utf-8')
                 regex = self.target_table_model.getValueAt(rowno, 2).encode('utf-8')
 
                 self.target_table_model.removeRow(rowno)
-                with open("target.json", 'r') as f:
+                with open("target.json", 'r+') as f:
                     try:
                         json_data = json.load(f)
                     except:
                         json_data = dict()
 
-                with open("target.json", "w") as f:
                     for key, value in json_data.items():
-                        if value.encode('utf-8') == regex and key.encode('utf-8') == param_name:
+                        if value[1].encode('utf-8') == regex and key.encode('utf-8') == param_name:
                             try:
                                 del json_data[key]
                             except:
                                 print('Error: {0}: No such json key.'.format(key))
-                    f.write(json.dumps(json_data))
+                    self.write_file(f, json.dumps(json_data))
         
+        # onclick load button of payload sets
         if actionEvent.getSource() is self._file_load_btn:
+            #clear table
+            self.remove_all(self.file_table_model)
+            self.current_column_id = 0
+
             target_param = self._file_param_text.getText()
+            item = self._file_dropdown.getSelectedItem()
 
             if len(target_param) == 0:
                 self._error_message.setVisible(True)
                 return 
+            self._error_message.setVisible(False)
+
             chooser = JFileChooser()
             chooser.showOpenDialog(actionEvent.getSource())
             file_path = chooser.getSelectedFile().getAbsolutePath()
@@ -293,44 +334,46 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                 line = f.readline()
                 while line:
                     data = [
+                        item,
                         target_param,
                         line.strip(),
                     ]
                     self.file_table_model.addRow(data)
                     line = f.readline()
-            with open('target.json', 'r') as f:
+
+            with open('target.json', 'r+') as f:
                 try:
                     json_data = json.load(f)
                 except:
                     json_data = dict()
-            
-            with open('target.json', 'w') as f:
+                
                 json_data.update({
-                        target_param : 'Set payload',
+                        target_param : [
+                            item,
+                            'Set payload',
+                        ]
                     })
-                f.write(json.dumps(json_data))
+                self.write_file(f, json.dumps(json_data))
         
+        # onclick clear button of payload sets
         if actionEvent.getSource() is self._file_clear_btn:
-            count = self.file_table.getRowCount()
-            for i in xrange(count):
-                self.file_table_model.removeRow(0)
+            self.remove_all(self.file_table_model)
 
             self.current_column_id = 0
             
-            with open("target.json", 'r') as f:
-                    try:
-                        json_data = json.load(f)
-                    except:
-                        json_data = dict()
+            with open("target.json", 'r+') as f:
+                try:
+                    json_data = json.load(f)
+                except:
+                    json_data = dict()
 
-            with open("target.json", "w") as f:
                 for key, value in json_data.items():
-                    if value.encode('utf-8') == 'Set payload':
+                    if value[1].encode('utf-8') == 'Set payload':
                         try:
                             del json_data[key]
                         except:
                             print('Error: {0}: No such json key.'.format(key))
-                f.write(json.dumps(json_data))
+                self.write_file(f, json.dumps(json_data))
     #
     # Implement ISessionHandlingAction
     #
@@ -352,23 +395,31 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
 
         req = self.helpers.analyzeRequest(current_request)
 
-        if IRequestInfo.CONTENT_TYPE_JSON != req.getContentType():
-            return False
-
-        body = current_request.getRequest()[req.getBodyOffset():].tostring()
-
         try:
-            json_data = json.loads(body, object_pairs_hook=collections.OrderedDict)
-            
             with open('target.json', 'r') as f:
                 read_data = f.read()
-                read_data = json.loads(read_data)
+                self.read_data = json.loads(read_data)
         except ValueError: 
             sys.stderr.write('Error: json.loads()')
             return
 
-        target_keys = filter(lambda x: x in json_data.keys(), read_data.keys())
+        for key, value in self.read_data.items():
+            if value[0] == 'JSON':
+                self.set_json_parameter(current_request, final_response, key, value)
+            elif value[0] == 'Header':
+                self.set_header(current_request, final_response, key, value)
 
+
+    def set_json_parameter(self, current_request, final_response, key, value):
+        req = self.helpers.analyzeRequest(current_request)
+
+        if IRequestInfo.CONTENT_TYPE_JSON != req.getContentType():
+            return False
+
+        body = current_request.getRequest()[req.getBodyOffset():].tostring()
+        json_data = json.loads(body, object_pairs_hook=collections.OrderedDict)
+
+        target_keys = filter(lambda x: x == key, json_data.keys())
         if not target_keys:
             return
 
@@ -377,21 +428,68 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         column_model = self.file_table.getColumnModel()
         row_count = self.file_table_model.getRowCount()
         for key in target_keys:
-            if read_data[key] == 'Set payload':
+            if value[1] == 'Set payload':
                 if row_count > self.current_column_id:
-                    value = self.file_table_model.getValueAt(self.current_column_id, 1)
+                    req_value = self.file_table_model.getValueAt(self.current_column_id, 2)
                     self.current_column_id += 1
             else:
-                match = re.search(read_data[key], body_string)
+                match = re.search(value[1], body_string)
                 if match:
-                    value = match.group(1)
-                else:
-                    continue
-            req_data[key] = value
+                    req_value = match.group(1)
+
+            req_data[key] = req_value
         req = current_request.getRequest()
+
         json_data_start = self.helpers.indexOf(req, bytearray(body), False, 0, len(req))
 
-        # glue together first line + session token header + rest of request
+        # glue together header + customized json of request
         current_request.setRequest(
-                    req[0:json_data_start] +
-                    self.helpers.stringToBytes(json.dumps(req_data)))
+                req[0:json_data_start] +
+                self.helpers.stringToBytes(json.dumps(req_data)))
+
+    def set_header(self, current_request, final_response, key, value):
+        req = self.helpers.analyzeRequest(current_request)
+        headers = req.getHeaders()
+        target_keys = []
+        for header in headers:
+            if header.startswith(key):
+                target_keys += [key]
+
+        if not target_keys:
+            return
+
+        column_model = self.file_table.getColumnModel()
+        row_count = self.file_table_model.getRowCount()
+        req = current_request.getRequest()
+        
+        for key in target_keys:
+            if value[1] == 'Set payload':
+                if row_count > self.current_column_id:
+                    req_value = self.file_table_model.getValueAt(self.current_column_id, 2)
+                    self.current_column_id += 1
+            else:
+                match = re.search(value[1], final_response.tostring())
+                if match:
+                    req_value = match.group(1)
+                    
+            key_start = self.helpers.indexOf(req, bytearray(key.encode('utf-8')), False, 0, len(req))
+            key_end = self.helpers.indexOf(req, bytearray('\r\n'), False, key_start, len(req))
+
+            keylen = len(key)
+
+        # glue together first line + customized hedaer + rest of request
+        current_request.setRequest(
+                req[0:key_start] +
+                self.helpers.stringToBytes("%s: %s" % (key, req_value)) +
+                req[key_end:])
+
+    def remove_all(self, model):
+        count = model.getRowCount()
+        for i in xrange(count):
+            model.removeRow(0)
+
+    def write_file(self, f, data):
+        f.seek(0)
+        f.write(data)
+        f.truncate()
+        return
