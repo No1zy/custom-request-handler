@@ -70,7 +70,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         boxVertical.add(boxHorizontal)
 
         box_regex = swing.Box.createVerticalBox()
-        border = BorderFactory.createTitledBorder(LineBorder(Color.BLACK), "Extract from regex group", TitledBorder.LEFT, TitledBorder.TOP)
+        border = BorderFactory.createTitledBorder(LineBorder(Color.BLACK), "Extract target strings", TitledBorder.LEFT, TitledBorder.TOP)
         box_regex.setBorder(border)
 
         self._add_btn = JButton("Add")
@@ -93,6 +93,10 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         self._param_error.setVisible(False)
         self._param_error.setFont(Font(Font.MONOSPACED, Font.ITALIC, 12))
         self._param_error.setForeground(Color.red)
+
+        regex_checkbox = JPanel(FlowLayout(FlowLayout.LEADING))
+        self._is_use_regex = JCheckBox("Extract from regex group")
+        regex_checkbox.add(self._is_use_regex)
         self._jTextIn_param = JTextField(20)
         self._jLabel_regex = JLabel("Regex:")
         self._jTextIn_regex = JTextField(20)
@@ -119,6 +123,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         button_panel.add(self._remove_btn)
         box_regex.add(type_panel)
         box_regex.add(self._param_panel)
+        box_regex.add(regex_checkbox)
         box_regex.add(self._regex_panel)
         buttonHorizontal.add(button_panel)
         box_regex.add(buttonHorizontal)
@@ -188,6 +193,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         regex_column_names = [ 
             "Type",
             "Name",
+            "Regex",
             "Start at offset",
             "End at offset",
         ]
@@ -252,29 +258,41 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
 
         # onclick add button of extract from regex group
         if actionEvent.getSource() is self._add_btn:
+            start, end = self._text_editor.getSelectionBounds()
+            value = None
+            regex  = None
             item = self._dropdown.getSelectedItem()
             param = self._jTextIn_param.getText()
+
             if len(param) is 0:
                 self._param_error.setVisible(True)
                 return
             self._param_error.setVisible(False)
-            start, end = self._text_editor.getSelectionBounds()
+            is_selected = self._is_use_regex.isSelected()
+            if is_selected:
+                start = None
+                end   = None
+                regex = self._jTextIn_regex.getText()
+                if len(regex) is 0:
+                    self._regex_error.setVisible(True)
+                    return
 
-            #regex = self._jTextIn_regex.getText()
-            req = self._text_editor.getText()
-
-            '''try:
-                pattern = re.compile(regex)
-                match = pattern.search(req)
-                value = match.group(1) if match else None
-            except IndexError:
-                self._regex_error.setVisible(True)
-                return 
-            self._regex_error.setVisible(False)'''
+                req = self._text_editor.getText()
+                try:
+                    pattern = re.compile(regex)
+                    match = pattern.search(req)
+                    value = match.group(1) if match else None
+                    if value is None:
+                        raise IndexError
+                except IndexError:
+                    self._regex_error.setVisible(True)
+                    return 
+                self._regex_error.setVisible(False)
 
             data = [
                 item,
                 param,
+                regex,
                 start,
                 end,
             ]
@@ -285,14 +303,22 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                     json_data = json.load(f)
                 except:
                     json_data = dict()
-
-                json_data.update({
-                    param : [
-                        item,
-                        start,
-                        end,
-                    ]
-                })
+                if is_selected:
+                    data = {
+                        param : [
+                            item,
+                            regex,
+                        ]
+                    }
+                else:
+                    data = {
+                        param : [
+                            item,
+                            start,
+                            end,
+                        ]
+                    }
+                json_data.update(data)
                 self.write_file(f, json.dumps(json_data))
 
         # onclick remove button of extract from regex group
@@ -301,7 +327,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             if rowno != -1:
                 column_model = self.target_table.getColumnModel()
                 param_name = self.target_table_model.getValueAt(rowno, 1)
-                start = self.target_table_model.getValueAt(rowno, 2)
+                start = self.target_table_model.getValueAt(rowno, 3)
 
                 self.target_table_model.removeRow(rowno)
                 with open("target.json", 'r+') as f:
@@ -373,11 +399,12 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                     json_data = dict()
 
                 for key, value in json_data.items():
-                    if value[1].encode('utf-8') == 'Set payload':
-                        try:
-                            del json_data[key]
-                        except:
-                            print('Error: {0}: No such json key.'.format(key))
+                    if isinstance(value[1], unicode):
+                        if value[1].encode('utf-8') == 'Set payload':
+                            try:
+                                del json_data[key]
+                            except:
+                                print('Error: {0}: No such json key.'.format(key))
                 self.write_file(f, json.dumps(json_data))
 
     #
@@ -437,8 +464,15 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                     req_value = self.file_table_model.getValueAt(self.current_column_id, 2)
                     self.current_column_id += 1
             else:
-                start, end = value[1:]
-                req_value = final_response[start:end].tostring()
+                # No selected regex 
+                if len(value) > 2:
+                    start, end = value[1:]
+                    req_value = final_response[start:end].tostring()
+                else:
+                    regex = value[1]
+                    match = re.search(regex, final_response.tostring())
+                    req_value = match.group(1) if match else None
+
             req_data[key] = req_value
 
         req = current_request.getRequest()
@@ -470,9 +504,15 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                     req_value = self.file_table_model.getValueAt(self.current_column_id, 2)
                     self.current_column_id += 1
             else:
-                start, end = value[1:]
-                req_value = final_response[start:end].tostring()
-                    
+                # No selected regex
+                if len(value) > 2:
+                    start, end = value[1:]
+                    req_value = final_response[start:end].tostring()
+                else:
+                    regex = value[1]
+                    match = re.search(regex, final_response.string())
+                    req_value = match.group(1) if match else None
+
             key_start = self.helpers.indexOf(req, bytearray(key.encode('utf-8')), False, 0, len(req))
             key_end = self.helpers.indexOf(req, bytearray('\r\n'), False, key_start, len(req))
 
