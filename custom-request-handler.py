@@ -53,7 +53,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         self._text_editor = callbacks.createTextEditor()
         self._text_editor.setEditable(False)
 
-        #The state was How far loaded the table 
+        #How much loaded the table row 
         self.current_column_id = 0
 
         #GUI 
@@ -243,7 +243,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             send_res = message.tostring()
             self._text_editor.setText(send_res)
         except:
-             print 'Failed to add data to JSON replacer tab.'
+            print('Failed to add data to JSON replacer tab.')
 
     #
     # Implement Action
@@ -379,10 +379,10 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                         except:
                             print('Error: {0}: No such json key.'.format(key))
                 self.write_file(f, json.dumps(json_data))
+
     #
     # Implement ISessionHandlingAction
     #
-
     def getActionName(self):
         return "custom request handler"
 
