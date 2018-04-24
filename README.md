@@ -5,7 +5,7 @@ This extension is customized for "Rule Actoins" in "Session Handling Rules".
 * Automaticaly overwrites JSON and Headers with handled request from macro function.
 * You can config a simple list of string that are used as payloads.
 
-# Instlation
+# Installation
 Jython 2.7+ is required for this extension to work to set it up in Burp's Extender Options before adding the extension. 
 
 # User guide - How to use?
