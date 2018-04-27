@@ -17,7 +17,7 @@ Jython 2.7+ is required for this extension to work to set it up in Burp's Extend
 5. Click "OK".
 
 ### Automaticaly overwrite parameters
-1. Right-click in a tab with http/https response and click "Send to CHR".
+1. Right-click in a tab with http/https response and click "Send to CRH".
 2. Select target type(JSON/Header) in "Extract target strings".
 3. Enter name of the target to overwrite.
 4. Click "Add".
