@@ -333,7 +333,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                 with open("target.json", 'r+') as f:
                     try:
                         json_data = json.load(f)
-                    except:
+                    except ValueError:
                         json_data = dict()
 
                     for key, value in json_data.items():
