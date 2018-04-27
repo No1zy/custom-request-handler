@@ -46,7 +46,7 @@ Jython 2.7+ is required for this extension to work to set it up in Burp's Extend
 5. "OK"をクリックする
 
 ### パラメータの自動上書き
-1. httpかhttpsレスポンスがあるタブ(HistoryやRepeaterなど)で右クリックして"Send to CHR"をクリックする
+1. httpかhttpsレスポンスがあるタブ(HistoryやRepeaterなど)で右クリックして"Send to CRH"をクリックする
 2. 対象のタイプ(JSON/Header)を選択する
 3. 書き換える対象のパラメータ名を入力する
 4. "Add"をクリックする
