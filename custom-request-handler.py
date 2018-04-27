@@ -235,7 +235,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
     def createMenuItems(self, invocation):
         menu = []
         ctx = invocation.getInvocationContext()
-        menu.append(swing.JMenuItem("Send to CHR", None, actionPerformed=lambda x, inv=invocation: self.menu_action(inv)))
+        menu.append(swing.JMenuItem("Send to CRH", None, actionPerformed=lambda x, inv=invocation: self.menu_action(inv)))
         return menu if menu else None
 
     #
