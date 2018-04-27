@@ -1,7 +1,7 @@
 # custom-request-handler
 This extension is customized for "Rule Actoins" in "Session Handling Rules".
 
-## It was possible
+## Features
 * Automaticaly overwrites JSON and Headers with handled request from macro function.
 * You can configure a simple list of string that are used as payloads.(This is similar to "Intruder".)
 
@@ -33,7 +33,7 @@ Jython 2.7+ is required for this extension to work to set it up in Burp's Extend
 # custom-request-handler
 これはSession Handling RulesのRule Actoinsを拡張したもの。
 
-# 可能なこと
+# 特徴
 * マクロ機能から渡されたrequestのJSONとヘッダを自動で書き換えることができる。
 * simple listからペイロードを設定できる。(Intruderのsimple listとほぼ同じ)
 
