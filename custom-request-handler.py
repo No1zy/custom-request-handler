@@ -301,7 +301,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             with open("target.json", "r+") as f:
                 try:
                     json_data = json.load(f)
-                except:
+                except ValueError:
                     json_data = dict()
                 if is_selected:
                     data = {
@@ -340,7 +340,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                         if value[1] == start and key == param_name:
                             try:
                                 del json_data[key]
-                            except:
+                            except IndexError:
                                 print('Error: {0}: No such json key.'.format(key))
                     self.write_file(f, json.dumps(json_data))
 
@@ -375,7 +375,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             with open('target.json', 'r+') as f:
                 try:
                     json_data = json.load(f)
-                except:
+                except ValueError:
                     json_data = dict()
                 
                 json_data.update({
@@ -403,7 +403,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                         if value[1].encode('utf-8') == 'Set payload':
                             try:
                                 del json_data[key]
-                            except:
+                            except IndexError:
                                 print('Error: {0}: No such json key.'.format(key))
                 self.write_file(f, json.dumps(json_data))
 
