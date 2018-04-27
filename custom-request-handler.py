@@ -249,7 +249,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             send_res = message.tostring()
             self._text_editor.setText(send_res)
         except:
-            print('Failed to add data to JSON replacer tab.')
+            print('Failed to add data to CRH tab.')
 
     #
     # Implementation of event action
