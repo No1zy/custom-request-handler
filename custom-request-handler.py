@@ -362,15 +362,16 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             chooser.showOpenDialog(actionEvent.getSource())
             file_path = chooser.getSelectedFile().getAbsolutePath()
             with open(file_path, 'r') as f:
-                line = f.readline()
-                while line:
+                while True:
+                    line = f.readline().strip()
+                    if not line:
+                        break
                     data = [
                         item,
                         target_param,
-                        line.strip(),
+                        line,
                     ]
                     self.file_table_model.addRow(data)
-                    line = f.readline()
 
             with open('target.json', 'r+') as f:
                 try:
