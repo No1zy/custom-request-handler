@@ -239,7 +239,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
         return menu if menu else None
 
     #
-    # Implement Menu Action
+    # Implementation of Menu Action
     #
     def menu_action(self, invocation):
         try:
@@ -252,7 +252,7 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
             print('Failed to add data to JSON replacer tab.')
 
     #
-    # Implement Action
+    # Implementation of event action
     #
     def actionPerformed(self, actionEvent):
 
@@ -408,13 +408,11 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                 self.write_file(f, json.dumps(json_data))
 
     #
-    # Implement ISessionHandlingAction
+    # Implementaion of ISessionHandlingAction
     #
     def getActionName(self):
         return "custom request handler"
 
-    # current_request []byte
-    # macro_items     
     def performAction(self, current_request, macro_items):
 
         if len(macro_items) == 0:
@@ -524,11 +522,17 @@ class BurpExtender(IBurpExtender, ISessionHandlingAction, ITab, IContextMenuFact
                 self.helpers.stringToBytes("%s: %s" % (key.encode('utf-8'), req_value)) +
                 req[key_end:])
 
+    #
+    # Implementation of function for Remove all for specific table data 
+    #
     def remove_all(self, model):
         count = model.getRowCount()
         for i in xrange(count):
             model.removeRow(0)
 
+    #
+    # Implementaion of function for write data for specific file
+    #
     def write_file(self, f, data):
         f.seek(0)
         f.write(data)
